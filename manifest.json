@@ -1,0 +1,16 @@
+{
+  "name": "JAY Chat",
+  "short_name": "JAY Chat",
+  "description": "Application de messagerie instantanée",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
