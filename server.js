@@ -3,16 +3,14 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname)));
+// Sert tous les fichiers statiques du dossier (index.html, manifest.json, etc.)
+app.use(express.static(__dirname));
 
-app.get('/manifest.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'manifest.json'));
-});
-
+// Route de secours pour les autres URLs
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`Serveur actif sur le port ${PORT}`);
+  console.log(`Serveur prêt sur le port ${PORT}`);
 });
