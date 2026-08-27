@@ -8,9 +8,10 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://via.placeholder.com/512",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23000000'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='120' fill='%23ffffff'>JAY</text></svg>",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
