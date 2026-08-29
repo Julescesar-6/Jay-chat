@@ -18,8 +18,8 @@
     .msg { background: #222; padding: 10px 14px; border-radius: 12px; max-width: 80%; width: fit-content; word-break: break-word; }
     .msg.me { background: #4CAF50; color: white; align-self: flex-end; }
     .msg.system { background: transparent; color: #888; font-size: 12px; align-self: center; text-align: center; }
-    .msg .author { font-size: 11px; opacity: 0.8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .msg .time { font-size: 10px; opacity: 0.7; font-weight: normal; }
+    .msg .author { font-size: 11px; opacity: 0.85; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .msg .time { font-size: 10px; opacity: 0.7; font-weight: normal; margin-left: 8px; }
     form { display: flex; padding: 10px; background: #1f1f1f; gap: 8px; }
     form input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: #2b2b2b; color: white; outline: none; }
     form button { background: #4CAF50; color: white; border: none; padding: 0 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
@@ -69,18 +69,27 @@
     function appendMessage(data) {
       const messagesDiv = document.getElementById('messages');
       const msgEl = document.createElement('div');
-      const isMe = data.user === myUsername;
-      const timeStr = data.timestamp ? `<span class="time">${data.timestamp}</span>` : '';
+      
+      const user = (typeof data === 'object' && data.user) ? data.user : 'Anonyme';
+      const text = (typeof data === 'object' && data.text) ? data.text : data;
+      
+      const now = new Date();
+      const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeStr = (typeof data === 'object' && data.timestamp) ? data.timestamp : currentTime;
+
+      const isMe = user === myUsername;
       
       msgEl.className = `msg ${isMe ? 'me' : ''}`;
-      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : data.user}</span>${timeStr}</div>${data.text}`;
+      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span><span class="time">${timeStr}</span></div>${text}`;
       messagesDiv.appendChild(msgEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
     socket.on('load-history', (history) => {
       document.getElementById('messages').innerHTML = '';
-      history.forEach(msg => appendMessage(msg));
+      if (Array.isArray(history)) {
+        history.forEach(msg => appendMessage(msg));
+      }
     });
 
     socket.on('chat-message', (data) => {
