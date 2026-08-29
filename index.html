@@ -18,8 +18,8 @@
     .msg { background: #222; padding: 10px 14px; border-radius: 12px; max-width: 80%; width: fit-content; word-break: break-word; }
     .msg.me { background: #4CAF50; color: white; align-self: flex-end; }
     .msg.system { background: transparent; color: #888; font-size: 12px; align-self: center; text-align: center; }
-    .msg .author { font-size: 11px; opacity: 0.7; margin-bottom: 3px; display: flex; justify-content: space-between; gap: 10px; }
-    .msg .time { font-size: 9px; opacity: 0.6; margin-left: 8px; }
+    .msg .author { font-size: 11px; opacity: 0.8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .msg .time { font-size: 10px; opacity: 0.7; font-weight: normal; }
     form { display: flex; padding: 10px; background: #1f1f1f; gap: 8px; }
     form input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: #2b2b2b; color: white; outline: none; }
     form button { background: #4CAF50; color: white; border: none; padding: 0 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
@@ -78,18 +78,15 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Réception de tout l'historique lors de la connexion
     socket.on('load-history', (history) => {
-      document.getElementById('messages').innerHTML = ''; // Nettoyer
+      document.getElementById('messages').innerHTML = '';
       history.forEach(msg => appendMessage(msg));
     });
 
-    // Réception d'un nouveau message en direct
     socket.on('chat-message', (data) => {
       appendMessage(data);
     });
 
-    // Message système (arrivée / départ)
     socket.on('system-message', (text) => {
       const messagesDiv = document.getElementById('messages');
       const msgEl = document.createElement('div');
