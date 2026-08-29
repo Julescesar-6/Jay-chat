@@ -1,8 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,66 +11,62 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 
-// Charger les messages existants
-let messagesHistory = [];
-if (fs.existsSync(MESSAGES_FILE)) {
-  try {
-    const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-    messagesHistory = JSON.parse(data);
-  } catch (err) {
-    console.error("Erreur de lecture de l'historique:", err);
-    messagesHistory = [];
-  }
-}
+// Anti-cache : Oblige l'application Android/WebView à toujours recharger la dernière version
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 app.use(express.static(__dirname));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+let messages = [];
+if (fs.existsSync(MESSAGES_FILE)) {
+  try {
+    messages = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
+  } catch (err) {
+    messages = [];
+  }
+}
 
-// Gestion Socket.IO
 io.on('connection', (socket) => {
-  
+  let currentUser = '';
+
+  socket.emit('load-history', messages);
+
   socket.on('join', (username) => {
-    socket.username = username;
-    
-    // 1. Envoyer tout l'historique des anciens messages au nouvel arrivant
-    socket.emit('load-history', messagesHistory);
-    
-    // 2. Annoncer l'arrivée du nouvel utilisateur aux autres
-    io.emit('system-message', `${username} a rejoint le chat`);
+    currentUser = username;
+    io.emit('system-message', `${currentUser} a rejoint le chat.`);
   });
 
   socket.on('chat-message', (text) => {
-    const messageData = {
-      user: socket.username || 'Anonyme',
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const msgData = {
+      user: currentUser || 'Anonyme',
       text: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: timeStr
     };
 
-    // Ajouter à l'historique en mémoire
-    messagesHistory.push(messageData);
+    messages.push(msgData);
+    if (messages.length > 100) messages.shift();
 
-    // Limiter l'historique aux 100 derniers messages pour garder l'application rapide
-    if (messagesHistory.length > 100) {
-      messagesHistory.shift();
-    }
+    try {
+      fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+    } catch (err) {}
 
-    // Sauvegarder dans le fichier JSON sur le serveur
-    fs.writeFile(MESSAGES_FILE, JSON.stringify(messagesHistory, null, 2), (err) => {
-      if (err) console.error("Erreur de sauvegarde:", err);
-    });
-
-    // Diffuser le message à TOUT LE MONDE
-    io.emit('chat-message', messageData);
+    io.emit('chat-message', msgData);
   });
 
   socket.on('disconnect', () => {
-    if (socket.username) {
-      io.emit('system-message', `${socket.username} a quitté le chat`);
+    if (currentUser) {
+      io.emit('system-message', `${currentUser} a quitté le chat.`);
     }
   });
 });
 
-server.listen(PORT, () => console.log(`Serveur prêt sur le port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Serveur prêt sur le port ${PORT}`);
+});
