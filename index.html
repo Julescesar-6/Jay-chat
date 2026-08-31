@@ -6,42 +6,84 @@
   <title>JAY Chat</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background-color: #121212; color: #fff; height: 100vh; display: flex; flex-direction: column; }
-    #auth-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; }
-    #auth-screen h1 { margin-bottom: 20px; color: #4CAF50; }
-    .auth-box { width: 100%; max-width: 320px; background: #1f1f1f; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
-    .auth-box input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2b2b2b; color: #fff; font-size: 14px; }
-    .auth-box button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #4CAF50; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .toggle-link { color: #888; font-size: 13px; text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
-    .error-msg { color: #ff5252; font-size: 12px; text-align: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #0b141a; color: #e9edef; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    #chat-screen { display: none; flex-direction: column; height: 100vh; }
-    header { background: #1f1f1f; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; border-bottom: 1px solid #333; color: #4CAF50; }
-    #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .msg { background: #222; padding: 10px 14px; border-radius: 12px; max-width: 80%; width: fit-content; word-break: break-word; }
-    .msg.me { background: #4CAF50; color: white; align-self: flex-end; }
-    .msg.system { background: transparent; color: #888; font-size: 12px; align-self: center; text-align: center; }
-    .msg .author { font-size: 11px; opacity: 0.85; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .msg .time { font-size: 10px; opacity: 0.7; font-weight: normal; margin-left: 8px; }
-    .msg img { max-width: 200px; max-height: 200px; border-radius: 8px; margin-top: 5px; display: block; }
-    .msg audio { max-width: 220px; margin-top: 5px; outline: none; }
-    .msg a.file-link { color: #80d8ff; text-decoration: underline; display: inline-block; margin-top: 5px; font-size: 14px; }
+    /* AUTH SCREEN */
+    #auth-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; background: #0b141a; }
+    #auth-screen h1 { margin-bottom: 25px; color: #00a884; font-size: 32px; font-weight: 600; }
+    .auth-box { width: 100%; max-width: 320px; background: #111b21; padding: 24px; border-radius: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .auth-box input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #2a3942; background: #202c33; color: #e9edef; font-size: 15px; outline: none; }
+    .auth-box button { width: 100%; padding: 12px; border-radius: 20px; border: none; background: #00a884; color: #111b21; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .toggle-link { color: #8696a0; font-size: 13px; text-align: center; cursor: pointer; text-decoration: underline; }
+    .error-msg { color: #f15c6d; font-size: 13px; text-align: center; }
 
-    form { display: flex; padding: 10px; background: #1f1f1f; gap: 6px; align-items: center; }
-    form input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: none; background: #2b2b2b; color: white; outline: none; }
-    .btn-icon { background: #2b2b2b; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .btn-icon.recording { background: #ff5252; animation: pulse 1s infinite; }
-    form button[type="submit"] { background: #4CAF50; color: white; border: none; padding: 0 16px; height: 40px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+    /* MAIN APP CONTAINER */
+    #app-container { display: none; flex-direction: column; height: 100vh; position: relative; }
 
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    /* HEADER STYLE WHATSAPP */
+    header.wa-header { background: #111b21; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+    header.wa-header h1 { font-size: 22px; color: #e9edef; font-weight: 500; }
+    .header-icons { display: flex; gap: 20px; color: #aebac1; font-size: 20px; }
+
+    /* SEARCH BAR */
+    .search-container { padding: 8px 12px; background: #0b141a; }
+    .search-box { background: #202c33; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; color: #8696a0; font-size: 14px; }
+    .search-box input { background: transparent; border: none; outline: none; color: #e9edef; width: 100%; font-size: 14px; }
+
+    /* FILTERS BAR */
+    .filters-bar { display: flex; gap: 8px; padding: 8px 12px; overflow-x: auto; background: #0b141a; }
+    .filter-chip { background: #202c33; color: #8696a0; padding: 6px 14px; border-radius: 16px; font-size: 13px; white-space: nowrap; }
+    .filter-chip.active { background: #005c4b; color: #00a884; font-weight: 500; }
+
+    /* CHAT LIST VIEW */
+    #chat-list-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .chat-item { display: flex; align-items: center; padding: 12px 16px; gap: 14px; border-bottom: 1px solid #111b21; cursor: pointer; }
+    .chat-item:active { background: #202c33; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: #6b7c85; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #fff; flex-shrink: 0; }
+    .chat-info { flex: 1; overflow: hidden; }
+    .chat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .chat-name { font-size: 16px; font-weight: 500; color: #e9edef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-time { font-size: 12px; color: #8696a0; }
+    .chat-preview { font-size: 14px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* FLOATING BUTTON */
+    .fab-button { position: absolute; bottom: 70px; right: 16px; width: 56px; height: 56px; border-radius: 16px; background: #00a884; color: #111b21; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+
+    /* BOTTOM NAVIGATION BAR */
+    nav.bottom-nav { background: #111b21; height: 60px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #202c33; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8696a0; font-size: 11px; text-decoration: none; }
+    .nav-item.active { color: #e9edef; }
+    .nav-item .nav-icon-box { padding: 4px 16px; border-radius: 16px; }
+    .nav-item.active .nav-icon-box { background: #202c33; color: #00a884; }
+    .nav-icon { font-size: 18px; }
+
+    /* CHAT CONVERSATION VIEW (ROOM) */
+    #conversation-view { display: none; flex-direction: column; height: 100vh; position: absolute; top: 0; left: 0; width: 100%; background: #0b141a; z-index: 10; }
+    header.room-header { background: #111b21; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+    .back-btn { font-size: 20px; color: #aebac1; cursor: pointer; }
+    #messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: radial-gradient(#202c33 1px, transparent 0); background-size: 24px 24px; }
+    .msg { background: #202c33; padding: 8px 12px; border-radius: 8px; max-width: 80%; width: fit-content; word-break: break-word; color: #e9edef; font-size: 14.5px; }
+    .msg.me { background: #005c4b; align-self: flex-end; }
+    .msg .author { font-size: 11px; color: #00a884; margin-bottom: 2px; font-weight: 500; display: flex; justify-content: space-between; gap: 10px; }
+    .msg.me .author { color: #8696a0; }
+    .msg .time { font-size: 10px; color: #8696a0; float: right; margin-left: 8px; margin-top: 4px; }
+    .msg img { max-width: 100%; border-radius: 6px; margin-top: 4px; display: block; }
+    .msg audio { max-width: 200px; margin-top: 4px; }
+
+    /* FOOTER INPUT */
+    form.chat-input-bar { display: flex; padding: 8px; background: #111b21; gap: 6px; align-items: center; }
+    form.chat-input-bar input[type="text"] { flex: 1; padding: 10px 14px; border-radius: 20px; border: none; background: #202c33; color: #e9edef; font-size: 15px; outline: none; }
+    .icon-btn { background: transparent; color: #8696a0; border: none; font-size: 20px; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .icon-btn.recording { color: #f15c6d; animation: pulse 1s infinite; }
+    .send-btn { background: #00a884; color: #111b21; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
 
+  <!-- ÉCRAN D'AUTHENTIFICATION -->
   <div id="auth-screen">
     <h1>JAY Chat</h1>
-    
     <div class="auth-box" id="login-box">
       <div id="login-error" class="error-msg"></div>
       <input type="text" id="login-id" placeholder="Numéro de téléphone ou E-mail" />
@@ -60,19 +102,93 @@
     </div>
   </div>
 
-  <div id="chat-screen">
-    <header>JAY Chat</header>
-    <div id="messages"></div>
+  <!-- CONTAINER PRINCIPAL STYLE WHATSAPP -->
+  <div id="app-container">
     
-    <form id="chat-form" onsubmit="sendMessage(event)">
-      <button type="button" class="btn-icon" onclick="document.getElementById('file-input').click()">📎</button>
-      <input type="file" id="file-input" style="display:none;" onchange="handleFileUpload(event)" />
-      
-      <button type="button" class="btn-icon" id="mic-btn" onclick="toggleRecord()">🎙️</button>
-      
-      <input type="text" id="msg-input" placeholder="Écrivez un message..." autocomplete="off" />
-      <button type="submit">Envoyer</button>
-    </form>
+    <!-- HEADER -->
+    <header class="wa-header">
+      <h1>WhatsApp</h1>
+      <div class="header-icons">
+        <span>📷</span>
+        <span>⋮</span>
+      </div>
+    </header>
+
+    <!-- BARRE DE RECHERCHE -->
+    <div class="search-container">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" placeholder="Rechercher..." />
+      </div>
+    </div>
+
+    <!-- FILTRES -->
+    <div class="filters-bar">
+      <div class="filter-chip active">Toutes</div>
+      <div class="filter-chip">Non lues</div>
+      <div class="filter-chip">Favoris</div>
+      <div class="filter-chip">Groupes</div>
+    </div>
+
+    <!-- LISTE DES DISCUSSIONS -->
+    <div id="chat-list-view">
+      <div class="chat-item" onclick="openChat('Groupe Général')">
+        <div class="avatar">G</div>
+        <div class="chat-info">
+          <div class="chat-top">
+            <span class="chat-name">Groupe Général</span>
+            <span class="chat-time" id="last-msg-time">--:--</span>
+          </div>
+          <div class="chat-preview" id="last-msg-preview">Cliquez pour ouvrir la discussion</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOUTON FLOTTANT NOUVELLE DISCUSSION -->
+    <div class="fab-button">💬</div>
+
+    <!-- NAVIGATION BAS -->
+    <nav class="bottom-nav">
+      <div class="nav-item active">
+        <div class="nav-icon-box"><span class="nav-icon">💬</span></div>
+        <span>Discussions</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-box"><span class="nav-icon">📞</span></div>
+        <span>Appels</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-box"><span class="nav-icon">🌀</span></div>
+        <span>Actus</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-box"><span class="nav-icon">🏪</span></div>
+        <span>Outils</span>
+      </div>
+    </nav>
+
+    <!-- VUE DE LA CONVERSATION -->
+    <div id="conversation-view">
+      <header class="room-header">
+        <span class="back-btn" onclick="closeChat()">←</span>
+        <div class="avatar" style="width:36px; height:36px; font-size:16px;">G</div>
+        <div>
+          <div class="chat-name" style="font-size:16px;">Groupe Général</div>
+          <div style="font-size:12px; color:#8696a0;">en ligne</div>
+        </div>
+      </header>
+
+      <div id="messages"></div>
+
+      <form class="chat-input-bar" onsubmit="sendMessage(event)">
+        <button type="button" class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
+        <input type="file" id="file-input" style="display:none;" onchange="handleFileUpload(event)" />
+        <input type="text" id="msg-input" placeholder="Message" autocomplete="off" />
+        <button type="button" class="icon-btn" id="mic-btn" onclick="toggleRecord()">🎙️</button>
+        <button type="submit" class="send-btn">➤</button>
+      </form>
+    </div>
+
   </div>
 
   <script>
@@ -85,14 +201,11 @@
     function toggleAuth(showRegister) {
       document.getElementById('login-box').style.display = showRegister ? 'none' : 'flex';
       document.getElementById('register-box').style.display = showRegister ? 'flex' : 'none';
-      document.getElementById('login-error').innerText = '';
-      document.getElementById('reg-error').innerText = '';
     }
 
     async function handleLogin() {
       const identifier = document.getElementById('login-id').value;
       const password = document.getElementById('login-pass').value;
-      const errorDiv = document.getElementById('login-error');
 
       const res = await fetch('/api/login', {
         method: 'POST',
@@ -102,9 +215,9 @@
       const data = await res.json();
 
       if (data.success) {
-        startChat(data.username);
+        startApp(data.username);
       } else {
-        errorDiv.innerText = data.error || 'Erreur de connexion';
+        document.getElementById('login-error').innerText = data.error || 'Erreur de connexion';
       }
     }
 
@@ -112,7 +225,6 @@
       const identifier = document.getElementById('reg-id').value;
       const username = document.getElementById('reg-username').value;
       const password = document.getElementById('reg-pass').value;
-      const errorDiv = document.getElementById('reg-error');
 
       const res = await fetch('/api/register', {
         method: 'POST',
@@ -122,17 +234,25 @@
       const data = await res.json();
 
       if (data.success) {
-        startChat(data.username);
+        startApp(data.username);
       } else {
-        errorDiv.innerText = data.error || 'Erreur de création de compte';
+        document.getElementById('reg-error').innerText = data.error || 'Erreur d\'inscription';
       }
     }
 
-    function startChat(username) {
+    function startApp(username) {
       myUsername = username;
       socket.emit('join', myUsername);
       document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('chat-screen').style.display = 'flex';
+      document.getElementById('app-container').style.display = 'flex';
+    }
+
+    function openChat(name) {
+      document.getElementById('conversation-view').style.display = 'flex';
+    }
+
+    function closeChat() {
+      document.getElementById('conversation-view').style.display = 'none';
     }
 
     function sendMessage(e) {
@@ -145,20 +265,16 @@
       input.value = '';
     }
 
-    // Gestion de l'envoi de fichiers (Images, PDF, etc.)
     function handleFileUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(evt) {
-        const fileData = evt.target.result;
-        let fileType = 'file';
-        if (file.type.startsWith('image/')) fileType = 'image';
-
+        let fileType = file.type.startsWith('image/') ? 'image' : 'file';
         socket.emit('chat-message', {
           type: fileType,
-          content: fileData,
+          content: evt.target.result,
           fileName: file.name
         });
       };
@@ -166,7 +282,6 @@
       e.target.value = '';
     }
 
-    // Gestion du vocal
     async function toggleRecord() {
       const micBtn = document.getElementById('mic-btn');
       if (!isRecording) {
@@ -180,10 +295,7 @@
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const reader = new FileReader();
             reader.onload = function(evt) {
-              socket.emit('chat-message', {
-                type: 'audio',
-                content: evt.target.result
-              });
+              socket.emit('chat-message', { type: 'audio', content: evt.target.result });
             };
             reader.readAsDataURL(audioBlob);
           };
@@ -192,7 +304,7 @@
           isRecording = true;
           micBtn.classList.add('recording');
         } catch (err) {
-          alert('Accès au micro refusé ou non supporté.');
+          alert('Accès micro refusé');
         }
       } else {
         mediaRecorder.stop();
@@ -206,50 +318,37 @@
       const msgEl = document.createElement('div');
       
       const user = data.user || 'Anonyme';
-      const now = new Date();
-      const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const timeStr = data.timestamp || currentTime;
-
+      const timeStr = data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const isMe = user === myUsername;
+
       msgEl.className = `msg ${isMe ? 'me' : ''}`;
       
       let bodyHtml = '';
-      if (typeof data === 'string') {
-        bodyHtml = data;
-      } else if (data.type === 'image') {
-        bodyHtml = `<img src="${data.content}" alt="Image" />`;
+      if (data.type === 'image') {
+        bodyHtml = `<img src="${data.content}" />`;
       } else if (data.type === 'audio') {
         bodyHtml = `<audio controls src="${data.content}"></audio>`;
       } else if (data.type === 'file') {
-        bodyHtml = `📄 <a class="file-link" href="${data.content}" download="${data.fileName || 'fichier'}">${data.fileName || 'Télécharger le fichier'}</a>`;
+        bodyHtml = `📄 <a href="${data.content}" download="${data.fileName}" style="color:#00a884;">${data.fileName}</a>`;
       } else {
-        bodyHtml = data.text || data.content || '';
+        bodyHtml = data.content || data.text || data;
       }
 
-      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span><span class="time">${timeStr}</span></div>${bodyHtml}`;
+      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span></div>${bodyHtml}<span class="time">${timeStr}</span>`;
       messagesDiv.appendChild(msgEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      // Mettre à jour la prévisualisation dans la liste
+      document.getElementById('last-msg-time').innerText = timeStr;
+      document.getElementById('last-msg-preview').innerText = `${user}: ${data.type === 'text' ? data.content : '[' + (data.type || 'Fichier') + ']'}`;
     }
 
     socket.on('load-history', (history) => {
       document.getElementById('messages').innerHTML = '';
-      if (Array.isArray(history)) {
-        history.forEach(msg => appendMessage(msg));
-      }
+      if (Array.isArray(history)) history.forEach(msg => appendMessage(msg));
     });
 
-    socket.on('chat-message', (data) => {
-      appendMessage(data);
-    });
-
-    socket.on('system-message', (text) => {
-      const messagesDiv = document.getElementById('messages');
-      const msgEl = document.createElement('div');
-      msgEl.className = 'msg system';
-      msgEl.innerText = text;
-      messagesDiv.appendChild(msgEl);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
+    socket.on('chat-message', (data) => appendMessage(data));
   </script>
 </body>
 </html>
