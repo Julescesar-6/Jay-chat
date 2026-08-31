@@ -111,7 +111,7 @@
       <h1>JAY Chat</h1>
       <div class="header-icons">
         <span>📷</span>
-        <span>⋮</span>
+        <span onclick="logout()" style="cursor:pointer;" title="Déconnexion">🚪</span>
       </div>
     </header>
 
@@ -198,6 +198,14 @@
     let myUsername = "";
     let currentRoom = "Groupe-General";
 
+    // Vérification de la session enregistrée au chargement
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('jaychat_user');
+      if (savedUser) {
+        startApp(savedUser);
+      }
+    });
+
     function toggleAuth(showRegister) {
       document.getElementById('login-box').style.display = showRegister ? 'none' : 'flex';
       document.getElementById('register-box').style.display = showRegister ? 'flex' : 'none';
@@ -215,6 +223,7 @@
       const data = await res.json();
 
       if (data.success) {
+        localStorage.setItem('jaychat_user', data.username);
         startApp(data.username);
       } else {
         document.getElementById('login-error').innerText = data.error || 'Erreur de connexion';
@@ -234,6 +243,7 @@
       const data = await res.json();
 
       if (data.success) {
+        localStorage.setItem('jaychat_user', data.username);
         startApp(data.username);
       } else {
         document.getElementById('reg-error').innerText = data.error || 'Erreur d\'inscription';
@@ -245,6 +255,11 @@
       socket.emit('join', myUsername);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-container').style.display = 'flex';
+    }
+
+    function logout() {
+      localStorage.removeItem('jaychat_user');
+      location.reload();
     }
 
     function openChat(name) {
