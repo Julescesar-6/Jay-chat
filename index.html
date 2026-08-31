@@ -8,10 +8,14 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
     body { background-color: #121212; color: #fff; height: 100vh; display: flex; flex-direction: column; }
-    #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; }
-    #login-screen h1 { margin-bottom: 20px; color: #4CAF50; }
-    #login-screen input { width: 100%; max-width: 300px; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: none; font-size: 16px; }
-    #login-screen button { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: none; background: #4CAF50; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    #auth-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; }
+    #auth-screen h1 { margin-bottom: 20px; color: #4CAF50; }
+    .auth-box { width: 100%; max-width: 320px; background: #1f1f1f; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
+    .auth-box input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2b2b2b; color: #fff; font-size: 14px; }
+    .auth-box button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #4CAF50; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .toggle-link { color: #888; font-size: 13px; text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
+    .error-msg { color: #ff5252; font-size: 12px; text-align: center; }
+
     #chat-screen { display: none; flex-direction: column; height: 100vh; }
     header { background: #1f1f1f; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; border-bottom: 1px solid #333; color: #4CAF50; }
     #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -27,10 +31,27 @@
 </head>
 <body>
 
-  <div id="login-screen">
+  <div id="auth-screen">
     <h1>JAY Chat</h1>
-    <input type="text" id="username-input" placeholder="Entrez votre pseudo..." />
-    <button onclick="joinChat()">Rejoindre</button>
+    
+    <!-- Formulaire de Connexion -->
+    <div class="auth-box" id="login-box">
+      <div id="login-error" class="error-msg"></div>
+      <input type="text" id="login-id" placeholder="Numéro de téléphone ou E-mail" />
+      <input type="password" id="login-pass" placeholder="Mot de passe" />
+      <button onclick="handleLogin()">Se Connecter</button>
+      <div class="toggle-link" onclick="toggleAuth(true)">Pas encore de compte ? S'inscrire</div>
+    </div>
+
+    <!-- Formulaire d'Inscription -->
+    <div class="auth-box" id="register-box" style="display: none;">
+      <div id="reg-error" class="error-msg"></div>
+      <input type="text" id="reg-id" placeholder="Numéro de téléphone ou E-mail" />
+      <input type="text" id="reg-username" placeholder="Pseudo dans le chat" />
+      <input type="password" id="reg-pass" placeholder="Créer un mot de passe" />
+      <button onclick="handleRegister()">Créer mon compte</button>
+      <div class="toggle-link" onclick="toggleAuth(false)">Déjà un compte ? Se connecter</div>
+    </div>
   </div>
 
   <div id="chat-screen">
@@ -46,14 +67,57 @@
     const socket = io();
     let myUsername = "";
 
-    function joinChat() {
-      const input = document.getElementById('username-input');
-      if (input.value.trim() !== "") {
-        myUsername = input.value.trim();
-        socket.emit('join', myUsername);
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('chat-screen').style.display = 'flex';
+    function toggleAuth(showRegister) {
+      document.getElementById('login-box').style.display = showRegister ? 'none' : 'flex';
+      document.getElementById('register-box').style.display = showRegister ? 'flex' : 'none';
+      document.getElementById('login-error').innerText = '';
+      document.getElementById('reg-error').innerText = '';
+    }
+
+    async function handleLogin() {
+      const identifier = document.getElementById('login-id').value;
+      const password = document.getElementById('login-pass').value;
+      const errorDiv = document.getElementById('login-error');
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        startChat(data.username);
+      } else {
+        errorDiv.innerText = data.error || 'Erreur de connexion';
       }
+    }
+
+    async function handleRegister() {
+      const identifier = document.getElementById('reg-id').value;
+      const username = document.getElementById('reg-username').value;
+      const password = document.getElementById('reg-pass').value;
+      const errorDiv = document.getElementById('reg-error');
+
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, username, password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        startChat(data.username);
+      } else {
+        errorDiv.innerText = data.error || 'Erreur de création de compte';
+      }
+    }
+
+    function startChat(username) {
+      myUsername = username;
+      socket.emit('join', myUsername);
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('chat-screen').style.display = 'flex';
     }
 
     function sendMessage(e) {
