@@ -2,115 +2,150 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const USERS_FILE = path.join(__dirname, 'users.json');
-const MESSAGES_FILE = path.join(__dirname, 'messages.json');
-
-// Charger les utilisateurs
-function loadUsers() {
-  if (!fs.existsSync(USERS_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-  } catch (e) {
-    return [];
+// ------------------------------------------------------------------
+// CONFIGURATION DE L'ENVOI D'EMAIL (A REMPLACER PAR VOS ACCÈS)
+// ------------------------------------------------------------------
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'VOTRE_EMAIL@gmail.com',       // Remplacer par votre Gmail
+    pass: 'VOTRE_MOT_DE_PASSE_APPLICATION' // Mot de passe d'application Gmail
   }
-}
-
-// Sauvegarder les utilisateurs
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// Charger l'historique des messages
-function loadMessages() {
-  if (!fs.existsSync(MESSAGES_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
-  } catch (e) {
-    return [];
-  }
-}
-
-// Sauvegarder l'historique des messages
-function saveMessages(messages) {
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-}
-
-let users = loadUsers();
-let messages = loadMessages();
-
-// Inscription
-app.post('/api/register', (req, res) => {
-  const { identifier, username, password } = req.body;
-  if (!identifier || !username || !password) {
-    return res.status(400).json({ success: false, error: 'Champs manquants' });
-  }
-
-  const exists = users.find(u => u.identifier === identifier);
-  if (exists) {
-    return res.status(400).json({ success: false, error: 'Utilisateur existe déjà' });
-  }
-
-  const newUser = { identifier, username, password };
-  users.push(newUser);
-  saveUsers(users);
-
-  res.json({ success: true, username: newUser.username });
 });
 
-// Connexion
+// Stockage temporaire en mémoire
+const users = {}; 
+const pendingVerifications = {}; 
+const chatHistory = [];
+
+// Fonction pour générer et envoyer le code OTP
+async function sendOTPCode(identifier, username, password) {
+  // Générer un code à 6 chiffres
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Stocker ou mettre à jour la demande (valide 5 minutes)
+  pendingVerifications[identifier] = {
+    username: username || pendingVerifications[identifier]?.username,
+    password: password || pendingVerifications[identifier]?.password,
+    code,
+    expiresAt: Date.now() + 5 * 60 * 1000 
+  };
+
+  // Si l'identifiant est un e-mail, envoyer le mail réel
+  if (identifier.includes('@')) {
+    const mailOptions = {
+      from: '"JAY Chat Security" <VOTRE_EMAIL@gmail.com>',
+      to: identifier,
+      subject: 'Votre code de vérification JAY Chat',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0b141a; color: #e9edef;">
+          <h2 style="color: #00a884;">JAY Chat</h2>
+          <p>Voici votre code de vérification pour confirmer votre compte :</p>
+          <div style="font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #00a884; padding: 10px 0;">
+            ${code}
+          </div>
+          <p>Ce code expire dans 5 minutes.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+  } else {
+    // Si c'est un numéro de téléphone, l'intégration SMS (Twilio) irait ici.
+    console.log(`[SMS OTP non configuré] Code pour ${identifier} : ${code}`);
+  }
+
+  return code;
+}
+
+// API : Demander/Renvoyer un code OTP
+app.post('/api/request-code', async (req, res) => {
+  const { identifier, username, password } = req.body;
+
+  if (!identifier) {
+    return res.json({ success: false, error: 'Identifiant requis.' });
+  }
+
+  if (users[identifier]) {
+    return res.json({ success: false, error: 'Ce compte existe déjà.' });
+  }
+
+  try {
+    await sendOTPCode(identifier, username, password);
+    return res.json({ success: true, message: 'Le code a été envoyé avec succès.' });
+  } catch (err) {
+    console.error(err);
+    return res.json({ success: false, error: "Erreur lors de l'envoi du mail/SMS." });
+  }
+});
+
+// API : Valider le code OTP
+app.post('/api/verify-code', (req, res) => {
+  const { identifier, code } = req.body;
+  const pending = pendingVerifications[identifier];
+
+  if (!pending) {
+    return res.json({ success: false, error: 'Aucune demande en cours.' });
+  }
+
+  if (Date.now() > pending.expiresAt) {
+    delete pendingVerifications[identifier];
+    return res.json({ success: false, error: 'Code expiré. Veuillez cliquer sur "Renvoyer".' });
+  }
+
+  if (pending.code !== code.trim()) {
+    return res.json({ success: false, error: 'Code incorrect.' });
+  }
+
+  // Création définitive du compte
+  users[identifier] = {
+    username: pending.username,
+    password: pending.password
+  };
+
+  delete pendingVerifications[identifier];
+  return res.json({ success: true, username: users[identifier].username });
+});
+
+// API : Connexion classique
 app.post('/api/login', (req, res) => {
   const { identifier, password } = req.body;
-  const user = users.find(u => u.identifier === identifier && u.password === password);
+  const user = users[identifier];
 
-  if (!user) {
-    return res.status(400).json({ success: false, error: 'Identifiants incorrects' });
+  if (!user || user.password !== password) {
+    return res.json({ success: false, error: 'Identifiant ou mot de passe incorrect.' });
   }
 
-  res.json({ success: true, username: user.username });
+  return res.json({ success: true, username: user.username });
 });
 
-// Socket.io pour les messages et l'heure
+// WebSockets (Chat & Appels)
 io.on('connection', (socket) => {
-  let currentUser = '';
-
   socket.on('join', (username) => {
-    currentUser = username;
-    // Envoyer l'historique des messages sauvegardés
-    socket.emit('load-history', messages);
+    socket.username = username;
+    socket.emit('load-history', chatHistory);
   });
 
   socket.on('chat-message', (data) => {
-    // Calcul de l'heure exacte (format HH:MM)
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const timeStr = `${hours}:${minutes}`;
-
-    const msgObj = {
-      user: currentUser || 'Anonyme',
-      content: data.content || data.text || data,
-      timestamp: timeStr
+    const msgData = {
+      user: socket.username || 'Anonyme',
+      content: data.content,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-
-    // Sauvegarde du message dans la mémoire et le fichier JSON
-    messages.push(msgObj);
-    saveMessages(messages);
-
-    // Diffusion du message avec l'heure à tout le monde
-    io.emit('chat-message', msgObj);
+    chatHistory.push(msgData);
+    if (chatHistory.length > 100) chatHistory.shift();
+    io.emit('chat-message', msgData);
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
