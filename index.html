@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JAY Chat</title>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/@zegocloud/zego-uikit-prebuilt/zego-uikit-prebuilt.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { background-color: #0b141a; color: #e9edef; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* AUTH SCREEN */
     #auth-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 20px; background: #0b141a; }
     #auth-screen h1 { margin-bottom: 25px; color: #00a884; font-size: 32px; font-weight: 600; }
     .auth-box { width: 100%; max-width: 320px; background: #111b21; padding: 24px; border-radius: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -18,25 +18,20 @@
     .toggle-link { color: #8696a0; font-size: 13px; text-align: center; cursor: pointer; text-decoration: underline; }
     .error-msg { color: #f15c6d; font-size: 13px; text-align: center; }
 
-    /* MAIN APP CONTAINER */
     #app-container { display: none; flex-direction: column; height: 100vh; position: relative; }
 
-    /* HEADER STYLE WHATSAPP */
     header.wa-header { background: #111b21; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
     header.wa-header h1 { font-size: 22px; color: #e9edef; font-weight: 500; }
     .header-icons { display: flex; gap: 20px; color: #aebac1; font-size: 20px; }
 
-    /* SEARCH BAR */
     .search-container { padding: 8px 12px; background: #0b141a; }
     .search-box { background: #202c33; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; color: #8696a0; font-size: 14px; }
     .search-box input { background: transparent; border: none; outline: none; color: #e9edef; width: 100%; font-size: 14px; }
 
-    /* FILTERS BAR */
     .filters-bar { display: flex; gap: 8px; padding: 8px 12px; overflow-x: auto; background: #0b141a; }
     .filter-chip { background: #202c33; color: #8696a0; padding: 6px 14px; border-radius: 16px; font-size: 13px; white-space: nowrap; }
     .filter-chip.active { background: #005c4b; color: #00a884; font-weight: 500; }
 
-    /* CHAT LIST VIEW */
     #chat-list-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
     .chat-item { display: flex; align-items: center; padding: 12px 16px; gap: 14px; border-bottom: 1px solid #111b21; cursor: pointer; }
     .chat-item:active { background: #202c33; }
@@ -47,41 +42,34 @@
     .chat-time { font-size: 12px; color: #8696a0; }
     .chat-preview { font-size: 14px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* FLOATING BUTTON */
-    .fab-button { position: absolute; bottom: 70px; right: 16px; width: 56px; height: 56px; border-radius: 16px; background: #00a884; color: #111b21; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-
-    /* BOTTOM NAVIGATION BAR */
-    nav.bottom-nav { background: #111b21; height: 60px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #202c33; }
+    nav.bottom-nav { background: #111b21; height: 60px; display: flex; justify-around; align-items: center; border-top: 1px solid #202c33; }
     .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #8696a0; font-size: 11px; text-decoration: none; }
     .nav-item.active { color: #e9edef; }
     .nav-item .nav-icon-box { padding: 4px 16px; border-radius: 16px; }
     .nav-item.active .nav-icon-box { background: #202c33; color: #00a884; }
     .nav-icon { font-size: 18px; }
 
-    /* CHAT CONVERSATION VIEW (ROOM) */
     #conversation-view { display: none; flex-direction: column; height: 100vh; position: absolute; top: 0; left: 0; width: 100%; background: #0b141a; z-index: 10; }
     header.room-header { background: #111b21; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
     .back-btn { font-size: 20px; color: #aebac1; cursor: pointer; }
+    .call-actions { margin-left: auto; display: flex; gap: 16px; color: #00a884; font-size: 20px; cursor: pointer; }
     #messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: radial-gradient(#202c33 1px, transparent 0); background-size: 24px 24px; }
     .msg { background: #202c33; padding: 8px 12px; border-radius: 8px; max-width: 80%; width: fit-content; word-break: break-word; color: #e9edef; font-size: 14.5px; }
     .msg.me { background: #005c4b; align-self: flex-end; }
     .msg .author { font-size: 11px; color: #00a884; margin-bottom: 2px; font-weight: 500; display: flex; justify-content: space-between; gap: 10px; }
     .msg.me .author { color: #8696a0; }
     .msg .time { font-size: 10px; color: #8696a0; float: right; margin-left: 8px; margin-top: 4px; }
-    .msg img { max-width: 100%; border-radius: 6px; margin-top: 4px; display: block; }
-    .msg audio { max-width: 200px; margin-top: 4px; }
 
-    /* FOOTER INPUT */
     form.chat-input-bar { display: flex; padding: 8px; background: #111b21; gap: 6px; align-items: center; }
     form.chat-input-bar input[type="text"] { flex: 1; padding: 10px 14px; border-radius: 20px; border: none; background: #202c33; color: #e9edef; font-size: 15px; outline: none; }
     .icon-btn { background: transparent; color: #8696a0; border: none; font-size: 20px; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .icon-btn.recording { color: #f15c6d; animation: pulse 1s infinite; }
     .send-btn { background: #00a884; color: #111b21; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+
+    #call-container { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; }
   </style>
 </head>
 <body>
 
-  <!-- ÉCRAN D'AUTHENTIFICATION -->
   <div id="auth-screen">
     <h1>JAY Chat</h1>
     <div class="auth-box" id="login-box">
@@ -102,10 +90,8 @@
     </div>
   </div>
 
-  <!-- CONTAINER PRINCIPAL STYLE WHATSAPP -->
   <div id="app-container">
     
-    <!-- HEADER -->
     <header class="wa-header">
       <h1>WhatsApp</h1>
       <div class="header-icons">
@@ -114,7 +100,6 @@
       </div>
     </header>
 
-    <!-- BARRE DE RECHERCHE -->
     <div class="search-container">
       <div class="search-box">
         <span>🔍</span>
@@ -122,7 +107,6 @@
       </div>
     </div>
 
-    <!-- FILTRES -->
     <div class="filters-bar">
       <div class="filter-chip active">Toutes</div>
       <div class="filter-chip">Non lues</div>
@@ -130,9 +114,8 @@
       <div class="filter-chip">Groupes</div>
     </div>
 
-    <!-- LISTE DES DISCUSSIONS -->
     <div id="chat-list-view">
-      <div class="chat-item" onclick="openChat('Groupe Général')">
+      <div class="chat-item" onclick="openChat('Groupe-General')">
         <div class="avatar">G</div>
         <div class="chat-info">
           <div class="chat-top">
@@ -144,10 +127,6 @@
       </div>
     </div>
 
-    <!-- BOUTON FLOTTANT NOUVELLE DISCUSSION -->
-    <div class="fab-button">💬</div>
-
-    <!-- NAVIGATION BAS -->
     <nav class="bottom-nav">
       <div class="nav-item active">
         <div class="nav-icon-box"><span class="nav-icon">💬</span></div>
@@ -167,14 +146,17 @@
       </div>
     </nav>
 
-    <!-- VUE DE LA CONVERSATION -->
     <div id="conversation-view">
       <header class="room-header">
         <span class="back-btn" onclick="closeChat()">←</span>
         <div class="avatar" style="width:36px; height:36px; font-size:16px;">G</div>
         <div>
-          <div class="chat-name" style="font-size:16px;">Groupe Général</div>
+          <div class="chat-name" style="font-size:16px;" id="current-room-name">Groupe Général</div>
           <div style="font-size:12px; color:#8696a0;">en ligne</div>
+        </div>
+        <div class="call-actions">
+          <span onclick="startCall('video')">📹</span>
+          <span onclick="startCall('audio')">📞</span>
         </div>
       </header>
 
@@ -184,19 +166,18 @@
         <button type="button" class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
         <input type="file" id="file-input" style="display:none;" onchange="handleFileUpload(event)" />
         <input type="text" id="msg-input" placeholder="Message" autocomplete="off" />
-        <button type="button" class="icon-btn" id="mic-btn" onclick="toggleRecord()">🎙️</button>
         <button type="submit" class="send-btn">➤</button>
       </form>
     </div>
 
   </div>
 
+  <div id="call-container"></div>
+
   <script>
     const socket = io();
     let myUsername = "";
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecording = false;
+    let currentRoom = "Groupe-General";
 
     function toggleAuth(showRegister) {
       document.getElementById('login-box').style.display = showRegister ? 'none' : 'flex';
@@ -248,6 +229,8 @@
     }
 
     function openChat(name) {
+      currentRoom = name;
+      document.getElementById('current-room-name').innerText = name.replace('-', ' ');
       document.getElementById('conversation-view').style.display = 'flex';
     }
 
@@ -265,52 +248,35 @@
       input.value = '';
     }
 
-    function handleFileUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+    function startCall(type) {
+      const appID = 1825548684;
+      const serverSecret = "VOTRE_SERVER_SECRET_COPIE";
 
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        let fileType = file.type.startsWith('image/') ? 'image' : 'file';
-        socket.emit('chat-message', {
-          type: fileType,
-          content: evt.target.result,
-          fileName: file.name
-        });
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
-    }
+      const roomID = currentRoom;
+      const userID = myUsername + "_" + Math.floor(Math.random() * 1000);
+      const userName = myUsername;
 
-    async function toggleRecord() {
-      const micBtn = document.getElementById('mic-btn');
-      if (!isRecording) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          mediaRecorder = new MediaRecorder(stream);
-          audioChunks = [];
+      const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(appID, serverSecret, roomID, userID, userName);
 
-          mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
-          mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-              socket.emit('chat-message', { type: 'audio', content: evt.target.result });
-            };
-            reader.readAsDataURL(audioBlob);
-          };
+      const zp = ZegoUIKitPrebuilt.create(kitToken);
+      document.getElementById('call-container').style.display = 'block';
 
-          mediaRecorder.start();
-          isRecording = true;
-          micBtn.classList.add('recording');
-        } catch (err) {
-          alert('Accès micro refusé');
+      zp.joinRoom({
+        container: document.getElementById('call-container'),
+        scenario: {
+          mode: ZegoUIKitPrebuilt.GroupCall,
+        },
+        turnOnCameraWhenJoining: type === 'video',
+        turnOnMicrophoneWhenJoining: true,
+        showMyCameraToggleButton: true,
+        showMyMicrophoneToggleButton: true,
+        showAudioVideoSettingsButton: true,
+        showScreenSharingButton: false,
+        onLeaveRoom: () => {
+          document.getElementById('call-container').style.display = 'none';
+          document.getElementById('call-container').innerHTML = '';
         }
-      } else {
-        mediaRecorder.stop();
-        isRecording = false;
-        micBtn.classList.remove('recording');
-      }
+      });
     }
 
     function appendMessage(data) {
@@ -323,24 +289,11 @@
 
       msgEl.className = `msg ${isMe ? 'me' : ''}`;
       
-      let bodyHtml = '';
-      if (data.type === 'image') {
-        bodyHtml = `<img src="${data.content}" />`;
-      } else if (data.type === 'audio') {
-        bodyHtml = `<audio controls src="${data.content}"></audio>`;
-      } else if (data.type === 'file') {
-        bodyHtml = `📄 <a href="${data.content}" download="${data.fileName}" style="color:#00a884;">${data.fileName}</a>`;
-      } else {
-        bodyHtml = data.content || data.text || data;
-      }
-
+      let bodyHtml = data.content || data.text || data;
       msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span></div>${bodyHtml}<span class="time">${timeStr}</span>`;
+      
       messagesDiv.appendChild(msgEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      // Mettre à jour la prévisualisation dans la liste
-      document.getElementById('last-msg-time').innerText = timeStr;
-      document.getElementById('last-msg-preview').innerText = `${user}: ${data.type === 'text' ? data.content : '[' + (data.type || 'Fichier') + ']'}`;
     }
 
     socket.on('load-history', (history) => {
