@@ -6,13 +6,16 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// Limite augmentée à 50 Mo pour autoriser l'envoi de fichiers et vocaux
+const io = new Server(server, {
+  maxHttpBufferSize: 1e7
+});
 
 const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 const USERS_FILE = path.join(__dirname, 'users.json');
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -22,7 +25,6 @@ app.use((req, res, next) => {
 
 app.use(express.static(__dirname));
 
-// Charger les données
 let messages = [];
 if (fs.existsSync(MESSAGES_FILE)) {
   try { messages = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8')); } catch (err) { messages = []; }
@@ -33,14 +35,12 @@ if (fs.existsSync(USERS_FILE)) {
   try { users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch (err) { users = {}; }
 }
 
-// Routes d'authentification (API)
 app.post('/api/register', (req, res) => {
   const { identifier, username, password } = req.body;
   if (!identifier || !username || !password) {
     return res.status(400).json({ error: 'Tous les champs sont requis.' });
   }
   
-  // Vérifier si l'identifiant (téléphone ou email) existe déjà
   const cleanId = identifier.trim().toLowerCase();
   if (users[cleanId]) {
     return res.status(400).json({ error: 'Ce numéro ou cet e-mail est déjà utilisé.' });
@@ -61,13 +61,12 @@ app.post('/api/login', (req, res) => {
   
   const userAccount = users[cleanId];
   if (!userAccount || userAccount.password !== password) {
-    return res.status(401).json({ error: 'Identifiant (e-mail/téléphone) ou mot de passe incorrect.' });
+    return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
   }
 
   return res.json({ success: true, username: userAccount.username });
 });
 
-// Websocket / Chat
 io.on('connection', (socket) => {
   let currentUser = '';
 
@@ -78,18 +77,26 @@ io.on('connection', (socket) => {
     io.emit('system-message', `${currentUser} a rejoint le chat.`);
   });
 
-  socket.on('chat-message', (text) => {
+  socket.on('chat-message', (data) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    const msgData = {
+    let msgData = {
       user: currentUser || 'Anonyme',
-      text: text,
       timestamp: timeStr
     };
 
+    if (typeof data === 'object') {
+      msgData.type = data.type || 'text';
+      msgData.content = data.content || '';
+      if (data.fileName) msgData.fileName = data.fileName;
+    } else {
+      msgData.type = 'text';
+      msgData.content = data;
+    }
+
     messages.push(msgData);
-    if (messages.length > 100) messages.shift();
+    if (messages.length > 50) messages.shift();
 
     try {
       fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));

@@ -24,9 +24,17 @@
     .msg.system { background: transparent; color: #888; font-size: 12px; align-self: center; text-align: center; }
     .msg .author { font-size: 11px; opacity: 0.85; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .msg .time { font-size: 10px; opacity: 0.7; font-weight: normal; margin-left: 8px; }
-    form { display: flex; padding: 10px; background: #1f1f1f; gap: 8px; }
-    form input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: #2b2b2b; color: white; outline: none; }
-    form button { background: #4CAF50; color: white; border: none; padding: 0 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+    .msg img { max-width: 200px; max-height: 200px; border-radius: 8px; margin-top: 5px; display: block; }
+    .msg audio { max-width: 220px; margin-top: 5px; outline: none; }
+    .msg a.file-link { color: #80d8ff; text-decoration: underline; display: inline-block; margin-top: 5px; font-size: 14px; }
+
+    form { display: flex; padding: 10px; background: #1f1f1f; gap: 6px; align-items: center; }
+    form input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: none; background: #2b2b2b; color: white; outline: none; }
+    .btn-icon { background: #2b2b2b; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .btn-icon.recording { background: #ff5252; animation: pulse 1s infinite; }
+    form button[type="submit"] { background: #4CAF50; color: white; border: none; padding: 0 16px; height: 40px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -34,7 +42,6 @@
   <div id="auth-screen">
     <h1>JAY Chat</h1>
     
-    <!-- Formulaire de Connexion -->
     <div class="auth-box" id="login-box">
       <div id="login-error" class="error-msg"></div>
       <input type="text" id="login-id" placeholder="Numéro de téléphone ou E-mail" />
@@ -43,7 +50,6 @@
       <div class="toggle-link" onclick="toggleAuth(true)">Pas encore de compte ? S'inscrire</div>
     </div>
 
-    <!-- Formulaire d'Inscription -->
     <div class="auth-box" id="register-box" style="display: none;">
       <div id="reg-error" class="error-msg"></div>
       <input type="text" id="reg-id" placeholder="Numéro de téléphone ou E-mail" />
@@ -57,8 +63,14 @@
   <div id="chat-screen">
     <header>JAY Chat</header>
     <div id="messages"></div>
+    
     <form id="chat-form" onsubmit="sendMessage(event)">
-      <input type="text" id="msg-input" placeholder="Écrivez un message..." required autocomplete="off" />
+      <button type="button" class="btn-icon" onclick="document.getElementById('file-input').click()">📎</button>
+      <input type="file" id="file-input" style="display:none;" onchange="handleFileUpload(event)" />
+      
+      <button type="button" class="btn-icon" id="mic-btn" onclick="toggleRecord()">🎙️</button>
+      
+      <input type="text" id="msg-input" placeholder="Écrivez un message..." autocomplete="off" />
       <button type="submit">Envoyer</button>
     </form>
   </div>
@@ -66,6 +78,9 @@
   <script>
     const socket = io();
     let myUsername = "";
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
 
     function toggleAuth(showRegister) {
       document.getElementById('login-box').style.display = showRegister ? 'none' : 'flex';
@@ -126,25 +141,92 @@
       const text = input.value.trim();
       if (!text) return;
 
-      socket.emit('chat-message', text);
+      socket.emit('chat-message', { type: 'text', content: text });
       input.value = '';
+    }
+
+    // Gestion de l'envoi de fichiers (Images, PDF, etc.)
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const fileData = evt.target.result;
+        let fileType = 'file';
+        if (file.type.startsWith('image/')) fileType = 'image';
+
+        socket.emit('chat-message', {
+          type: fileType,
+          content: fileData,
+          fileName: file.name
+        });
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    // Gestion du vocal
+    async function toggleRecord() {
+      const micBtn = document.getElementById('mic-btn');
+      if (!isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+              socket.emit('chat-message', {
+                type: 'audio',
+                content: evt.target.result
+              });
+            };
+            reader.readAsDataURL(audioBlob);
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+          micBtn.classList.add('recording');
+        } catch (err) {
+          alert('Accès au micro refusé ou non supporté.');
+        }
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        micBtn.classList.remove('recording');
+      }
     }
 
     function appendMessage(data) {
       const messagesDiv = document.getElementById('messages');
       const msgEl = document.createElement('div');
       
-      const user = (typeof data === 'object' && data.user) ? data.user : 'Anonyme';
-      const text = (typeof data === 'object' && data.text) ? data.text : data;
-      
+      const user = data.user || 'Anonyme';
       const now = new Date();
       const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const timeStr = (typeof data === 'object' && data.timestamp) ? data.timestamp : currentTime;
+      const timeStr = data.timestamp || currentTime;
 
       const isMe = user === myUsername;
-      
       msgEl.className = `msg ${isMe ? 'me' : ''}`;
-      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span><span class="time">${timeStr}</span></div>${text}`;
+      
+      let bodyHtml = '';
+      if (typeof data === 'string') {
+        bodyHtml = data;
+      } else if (data.type === 'image') {
+        bodyHtml = `<img src="${data.content}" alt="Image" />`;
+      } else if (data.type === 'audio') {
+        bodyHtml = `<audio controls src="${data.content}"></audio>`;
+      } else if (data.type === 'file') {
+        bodyHtml = `📄 <a class="file-link" href="${data.content}" download="${data.fileName || 'fichier'}">${data.fileName || 'Télécharger le fichier'}</a>`;
+      } else {
+        bodyHtml = data.text || data.content || '';
+      }
+
+      msgEl.innerHTML = `<div class="author"><span>${isMe ? 'Moi' : user}</span><span class="time">${timeStr}</span></div>${bodyHtml}`;
       messagesDiv.appendChild(msgEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
